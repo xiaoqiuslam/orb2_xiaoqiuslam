@@ -23,3 +23,6 @@ build/
 lib/
 Thirdparty/Pangolin-0.6/
 CameraTrajectory.txt
+.idea/
+cmake-build-debug/
+.vscode/
