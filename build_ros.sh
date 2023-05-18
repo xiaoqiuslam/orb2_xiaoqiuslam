@@ -1,5 +1,5 @@
 echo "Building ROS nodes"
-export ROS_PACKAGE_PATH=${ROS_PACKAGE_PATH}:/home/q/ORB_SLAM2/Examples/ROS/ORB_SLAM2
+export ROS_PACKAGE_PATH=${ROS_PACKAGE_PATH}:/home/q/orb2_xiaoqiuslam/Examples/ROS/ORB_SLAM2
 cd Examples/ROS/ORB_SLAM2
 mkdir build
 cd build
