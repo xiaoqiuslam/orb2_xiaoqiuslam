@@ -62,6 +62,7 @@
 
 #include "ORBextractor.h"
 
+//#define COMPUTE_PYRAMID
 
 using namespace cv;
 using namespace std;
@@ -1106,8 +1107,29 @@ void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPo
 
 void ORBextractor::ComputePyramid(cv::Mat image)
 {
+
+#ifdef COMPUTE_PYRAMID
+    static int image_name = 0;
+
+    std::string directoryPath = "/home/q/orb2_xiaoqiuslam/tmp/" + std::to_string(image_name) + "/";
+    struct stat st;
+    if (stat(directoryPath.c_str(), &st) == -1) {
+        // Directory doesn't exist, create it
+        if (mkdir(directoryPath.c_str(), 0777) != 0) {
+            std::cerr << "creating directory." << std::endl;
+        }
+    }
+#endif
+
+    std::vector<cv::Mat> imagePyramid;
     for (int level = 0; level < nlevels; ++level)
     {
+
+#ifdef COMPUTE_PYRAMID
+        std::string fileName = std::to_string(level) + ".jpg";
+        std::string outputFileName = directoryPath + fileName;
+#endif
+
         float scale = mvInvScaleFactor[level];
         Size sz(cvRound((float)image.cols*scale), cvRound((float)image.rows*scale));
         Size wholeSize(sz.width + EDGE_THRESHOLD*2, sz.height + EDGE_THRESHOLD*2);
@@ -1120,14 +1142,72 @@ void ORBextractor::ComputePyramid(cv::Mat image)
             resize(mvImagePyramid[level-1], mvImagePyramid[level], sz, 0, 0, INTER_LINEAR);
 
             copyMakeBorder(mvImagePyramid[level], temp, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD,
-                           BORDER_REFLECT_101+BORDER_ISOLATED);            
+                           BORDER_REFLECT_101+BORDER_ISOLATED);
+
+#ifdef COMPUTE_PYRAMID
+            std::cout << "Output file path: " << outputFileName << std::endl;
+            cv::imwrite(outputFileName, temp);
+#endif
+
+
         }
         else
         {
             copyMakeBorder(image, temp, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD,
-                           BORDER_REFLECT_101);            
+                           BORDER_REFLECT_101);
+
+#ifdef COMPUTE_PYRAMID
+            std::cout << "Output file path: " << outputFileName << std::endl;
+            cv::imwrite(outputFileName, temp);
+#endif
+        }
+
+        imagePyramid.push_back(temp);
+    }
+
+#ifdef COMPUTE_PYRAMID
+    // 创建一个空白图像来容纳八张图像
+    int rows = 4;
+    int cols = 2;
+    cv::Mat mergedImage;
+
+    // 计算合并后图像的尺寸
+    int maxWidth = 0;
+    int maxHeight = 0;
+    for (const cv::Mat& image : imagePyramid)
+    {
+        maxWidth = std::max(maxWidth, image.cols);
+        maxHeight = std::max(maxHeight, image.rows);
+    }
+    mergedImage.create(maxHeight * rows, maxWidth * cols, CV_8UC1);
+    mergedImage.setTo(cv::Scalar(0, 0, 0));
+
+    // 将每张图像复制到合并图像的对应位置
+    int index = 0;
+    for (int row = 0; row < rows; ++row)
+    {
+        for (int col = 0; col < cols; ++col)
+        {
+            if (index >= imagePyramid.size())
+                break;
+
+            cv::Mat image = imagePyramid[index];
+
+            // 计算当前图像的ROI位置
+            int x = col * maxWidth;
+            int y = row * maxHeight;
+            cv::Rect roi(x, y, image.cols, image.rows);
+
+            // 将当前图像复制到合并图像的ROI
+            image.copyTo(mergedImage(roi));
+
+            ++index;
         }
     }
+
+    cv::imwrite("/home/q/orb2_xiaoqiuslam/" + std::to_string(image_name) + "_mergedImage.jpg", mergedImage);
+    image_name++;
+#endif
 
 }
 

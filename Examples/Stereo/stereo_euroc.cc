@@ -8,7 +8,7 @@
 
 #include<System.h>
 
-#define SHOW_IMAGE
+//#define SHOW_IMAGE
 
 using namespace std;
 
