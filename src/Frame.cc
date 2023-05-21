@@ -23,6 +23,7 @@
 #include "ORBmatcher.h"
 #include <thread>
 
+//#define DRAW_KEYPOINTS
 
 namespace ORB_SLAM2
 {
@@ -80,6 +81,29 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     thread threadRight(&Frame::ExtractORB,this,1,imRight);
     threadLeft.join();
     threadRight.join();
+
+#ifdef DRAW_KEYPOINTS
+
+    cv::Mat imLeftBGR;
+    imLeftBGR = imLeft.clone();
+    cv::cvtColor(imLeft, imLeftBGR, cv::COLOR_GRAY2BGR);
+    cv::drawKeypoints(imLeftBGR, mvKeys, imLeftBGR, cv::Scalar(0, 0, 255));
+
+    cv::Mat imRightBGR;
+    imRightBGR = imRight.clone();
+    cv::cvtColor(imRight, imRightBGR, cv::COLOR_GRAY2BGR);
+    cv::drawKeypoints(imRightBGR, mvKeysRight, imRightBGR, cv::Scalar(0, 255, 0));
+
+    cv::Mat mergedImage(imLeftBGR.rows, imLeftBGR.cols + imRightBGR.cols, imLeftBGR.type());
+    imLeftBGR.copyTo(mergedImage(cv::Rect(0, 0, imLeftBGR.cols, imLeftBGR.rows)));
+    imRightBGR.copyTo(mergedImage(cv::Rect(imLeftBGR.cols, 0, imRightBGR.cols, imRightBGR.rows)));
+
+
+    cv::imshow("Merged Image", mergedImage);
+    cv::waitKey(0);
+
+#endif
+
 
     N = mvKeys.size();
 
