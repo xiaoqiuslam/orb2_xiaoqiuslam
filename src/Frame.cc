@@ -23,7 +23,7 @@
 #include "ORBmatcher.h"
 #include <thread>
 
-//#define DRAW_KEYPOINTS
+#define DRAW_KEYPOINTS
 
 namespace ORB_SLAM2
 {
@@ -99,8 +99,7 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     imRightBGR.copyTo(mergedImage(cv::Rect(imLeftBGR.cols, 0, imRightBGR.cols, imRightBGR.rows)));
 
 
-    cv::imshow("Merged Image", mergedImage);
-    cv::waitKey(0);
+    cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/KeyPoints.png",mergedImage);
 
 #endif
 
@@ -111,6 +110,12 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
         return;
 
     UndistortKeyPoints();
+
+    m_image_Left_BGR = imLeft.clone();
+    cv::cvtColor(m_image_Left_BGR, m_image_Left_BGR, cv::COLOR_GRAY2BGR);
+
+    m_image_Right_BGR = imRight.clone();
+    cv::cvtColor(m_image_Right_BGR, m_image_Right_BGR, cv::COLOR_GRAY2BGR);
 
     ComputeStereoMatches();
 
@@ -505,17 +510,51 @@ void Frame::ComputeStereoMatches()
 
     const int Nr = mvKeysRight.size();
 
+    static int ir = 0;
+
+    // 遍历
     for(int iR=0; iR<Nr; iR++)
     {
         const cv::KeyPoint &kp = mvKeysRight[iR];
         const float &kpY = kp.pt.y;
         const float r = 2.0f*mvScaleFactors[mvKeysRight[iR].octave];
-        const int maxr = ceil(kpY+r);
-        const int minr = floor(kpY-r);
 
-        for(int yi=minr;yi<=maxr;yi++)
+        cv::Point2f pt1,pt2;
+        pt1.x=kp.pt.x-5;
+        pt1.y=kp.pt.y-5;
+        pt2.x=kp.pt.x+5;
+        pt2.y=kp.pt.y+5;
+        cv::rectangle(m_image_Right_BGR,pt1,pt2,cv::Scalar(255,0,0));
+        cv::circle(m_image_Right_BGR,kp.pt,2,cv::Scalar(255,0,0),-1);
+        std::cout << "iR " << iR << " kp.pt.x " << kp.pt.x << " kp.pt.y " << kp.pt.y << std::endl;
+//        cv::imshow("m_image_Right_BGR", m_image_Right_BGR);
+//        cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iR) + ".png",m_image_Right_BGR);
+
+        const int minr = floor(kpY-r);
+        const int maxr = ceil(kpY+r);
+
+
+        pt1.x=kp.pt.x;
+        pt1.y=minr;
+        pt2.x=kp.pt.x;
+        pt2.y=maxr;
+        cv::rectangle(m_image_Right_BGR,pt1,pt2,cv::Scalar(0,0,255));
+
+        // x 向右 y向下 原点在左上
+        for(int yi=minr;yi<=maxr;yi++){
+
             vRowIndices[yi].push_back(iR);
+
+            std::cout << " yi " << yi << " iR " << iR << std::endl;
+            cv::circle(m_image_Right_BGR,cv::Point2f(kp.pt.x, maxr),1,cv::Scalar(0,0,255),-1);
+            std::cout << " kp.pt.x " << kp.pt.x << " maxr " << maxr << std::endl;
+//            cv::imshow("m_image_Right_BGR", m_image_Right_BGR);
+//            cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iR) + "_" + to_string(yi) + ".png",m_image_Right_BGR);
+        }
+        ir = iR;
     }
+
+//    cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(ir) + ".png",m_image_Right_BGR);
 
     // Set limits for search
     const float minZ = mb;
@@ -533,13 +572,23 @@ void Frame::ComputeStereoMatches()
         const float &vL = kpL.pt.y;
         const float &uL = kpL.pt.x;
 
+        cv::rectangle(m_image_Left_BGR,cv::Point2f(kpL.pt.x-5, kpL.pt.y-5),cv::Point2f(kpL.pt.x+5, kpL.pt.y+5),cv::Scalar(100,0,0));
+        cv::circle(m_image_Left_BGR,mvKeys[iL].pt,2,cv::Scalar(100,0,0),-1);
+//        cv::imshow("m_image_Left_BGR", m_image_Left_BGR);
+        std::cout << "iL " << iL << " uL " << kpL.pt.x << " vL " << kpL.pt.y << std::endl;
+//        cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iL) + ".png",m_image_Left_BGR);
+
         const vector<size_t> &vCandidates = vRowIndices[vL];
 
         if(vCandidates.empty())
             continue;
 
+        std::cout << " minD " << minD << " maxD " << maxD << std::endl;
+
         const float minU = uL-maxD;
         const float maxU = uL-minD;
+
+        std::cout << " minU " << minU << " maxU " << maxU << std::endl;
 
         if(maxU<0)
             continue;
@@ -557,6 +606,16 @@ void Frame::ComputeStereoMatches()
 
             if(kpR.octave<levelL-1 || kpR.octave>levelL+1)
                 continue;
+
+            cv::Point2f pt1,pt2;
+            pt1.x=kpR.pt.x-5;
+            pt1.y=kpR.pt.y-5;
+            pt2.x=kpR.pt.x+5;
+            pt2.y=kpR.pt.y+5;
+            cv::rectangle(m_image_Right_BGR,pt1,pt2,cv::Scalar(0,100,0));
+            cv::circle(m_image_Right_BGR,mvKeysRight[iR].pt,2,cv::Scalar(0,100,0),-1);
+//            cv::imshow("m_image_Right_BGR", m_image_Right_BGR);
+//            cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iC) + "m_image_Right_BGR.png",m_image_Right_BGR);
 
             const float &uR = kpR.pt.x;
 
@@ -631,19 +690,30 @@ void Frame::ComputeStereoMatches()
 
             // Re-scaled coordinate
             float bestuR = mvScaleFactors[kpL.octave]*((float)scaleduR0+(float)bestincR+deltaR);
+            std::cout << "bestuR (Re-scaled coordinate): " << bestuR << std::endl;
 
             float disparity = (uL-bestuR);
+            std::cout << "Disparity: " << disparity << std::endl;
 
             if(disparity>=minD && disparity<maxD)
             {
+                std::cout << "Disparity is within the expected range.\n";
                 if(disparity<=0)
                 {
+                    std::cout << "Disparity is less than or equal to 0, adjusting...\n";
                     disparity=0.01;
                     bestuR = uL-0.01;
                 }
                 mvDepth[iL]=mbf/disparity;
+                std::cout << "Calculated depth for keypoint [" << iL << "] is: " << mvDepth[iL] << std::endl;
                 mvuRight[iL] = bestuR;
+                std::cout << "The coordinate in right image for keypoint [" << iL << "] is: " << mvuRight[iL] << std::endl;
                 vDistIdx.push_back(pair<int,int>(bestDist,iL));
+                std::cout << "Pushed pair (bestDist, iL): (" << bestDist << ", " << iL << ") to vDistIdx\n";
+            }
+            else
+            {
+                std::cout << "Disparity is not within the expected range. Skipping this keypoint...\n";
             }
         }
     }

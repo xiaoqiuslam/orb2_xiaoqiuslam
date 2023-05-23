@@ -99,6 +99,10 @@ public:
     cv::Mat UnprojectStereo(const int &i);
 
 public:
+
+    cv::Mat m_image_Left_BGR;
+    cv::Mat m_image_Right_BGR;
+
     // Vocabulary used for relocalization.
     ORBVocabulary* mpORBvocabulary;
 
