@@ -100,6 +100,8 @@ public:
 
     cv::Mat draw_key_point(const cv::Mat &src1, const cv::Mat &src2, vector<cv::KeyPoint> &kpt1, vector<cv::KeyPoint> &kpt2);
 
+    cv::Mat draw_key_point(const cv::Mat &src1, const cv::Mat &src2, cv::KeyPoint &kpt1, cv::KeyPoint &kpt2);
+
 
 public:
 

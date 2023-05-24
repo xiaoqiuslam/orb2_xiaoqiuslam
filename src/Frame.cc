@@ -498,50 +498,33 @@ void Frame::ComputeStereoMatches()
     const int Nr = mvKeysRight.size();
 
     static int ir = 0;
-
-    // 遍历
     for(int iR=0; iR<Nr; iR++)
     {
         const cv::KeyPoint &kp = mvKeysRight[iR];
         const float &kpY = kp.pt.y;
         const float r = 2.0f*mvScaleFactors[mvKeysRight[iR].octave];
 
-        cv::Point2f pt1,pt2;
-        pt1.x=kp.pt.x-5;
-        pt1.y=kp.pt.y-5;
-        pt2.x=kp.pt.x+5;
-        pt2.y=kp.pt.y+5;
-        cv::rectangle(m_image_Right_BGR,pt1,pt2,cv::Scalar(255,0,0));
-        cv::circle(m_image_Right_BGR,kp.pt,2,cv::Scalar(255,0,0),-1);
-        std::cout << "iR " << iR << " kp.pt.x " << kp.pt.x << " kp.pt.y " << kp.pt.y << std::endl;
-//        cv::imshow("m_image_Right_BGR", m_image_Right_BGR);
-//        cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iR) + ".png",m_image_Right_BGR);
+        cv::circle(m_image_Right_BGR,kp.pt,1,cv::Scalar(255,0,0),2);
+        cv::imshow("m_image_Right_BGR", m_image_Right_BGR);
+        cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iR) + ".png",m_image_Right_BGR);
+        cv::waitKey();
 
         const int minr = floor(kpY-r);
         const int maxr = ceil(kpY+r);
 
 
-        pt1.x=kp.pt.x;
-        pt1.y=minr;
-        pt2.x=kp.pt.x;
-        pt2.y=maxr;
-        cv::rectangle(m_image_Right_BGR,pt1,pt2,cv::Scalar(0,0,255));
-
         // x 向右 y向下 原点在左上
         for(int yi=minr;yi<=maxr;yi++){
-
             vRowIndices[yi].push_back(iR);
-
-            std::cout << " yi " << yi << " iR " << iR << std::endl;
-            cv::circle(m_image_Right_BGR,cv::Point2f(kp.pt.x, maxr),1,cv::Scalar(0,0,255),-1);
-            std::cout << " kp.pt.x " << kp.pt.x << " maxr " << maxr << std::endl;
-//            cv::imshow("m_image_Right_BGR", m_image_Right_BGR);
-//            cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iR) + "_" + to_string(yi) + ".png",m_image_Right_BGR);
+            cv::circle(m_image_Right_BGR,cv::Point2f(kp.pt.x, maxr),1,cv::Scalar(0,0,255),2);
+            cv::imshow("m_image_Right_BGR", m_image_Right_BGR);
+            cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iR) + "_" + to_string(yi) + ".png",m_image_Right_BGR);
+            cv::waitKey();
         }
         ir = iR;
     }
 
-//    cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(ir) + ".png",m_image_Right_BGR);
+    cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(ir) + ".png",m_image_Right_BGR);
 
     // Set limits for search
     const float minZ = mb;
@@ -767,20 +750,16 @@ cv::Mat Frame::draw_key_point(const cv::Mat &imLeft, const cv::Mat &imRight, vec
     cv::Mat imLeftBGR;
     imLeftBGR = imLeft.clone();
     cv::cvtColor(imLeft, imLeftBGR, cv::COLOR_GRAY2BGR);
-    cv::drawKeypoints(imLeftBGR, mvKeys, imLeftBGR, cv::Scalar(0, 0, 255));
 
     cv::Mat imRightBGR;
     imRightBGR = imRight.clone();
     cv::cvtColor(imRight, imRightBGR, cv::COLOR_GRAY2BGR);
-    cv::drawKeypoints(imRightBGR, mvKeysRight, imRightBGR, cv::Scalar(0, 255, 0));
-
 
     const int height = max(imLeftBGR.rows, imRightBGR.rows);
     const int width = imLeftBGR.cols + imRightBGR.cols;
     cv::Mat output(height, width, CV_8UC3, cv::Scalar(0, 0, 0));
     imLeftBGR.copyTo(output(cv::Rect(0, 0, imLeftBGR.cols, imLeftBGR.rows)));
     imRightBGR.copyTo(output(cv::Rect(imLeftBGR.cols, 0, imRightBGR.cols, imRightBGR.rows)));
-
 
     for (size_t i = 0; i < mvKeys.size(); i++)
     {
@@ -793,6 +772,37 @@ cv::Mat Frame::draw_key_point(const cv::Mat &imLeft, const cv::Mat &imRight, vec
         cv::Point2f right = (mvKeysRight[i].pt + cv::Point2f((float)imLeftBGR.cols, 0.f));
         circle(output, right, 1, cv::Scalar(0, 255, 0), 2);
     }
+
+    cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/output.png", output);
+
+    return output;
+}
+
+
+
+cv::Mat Frame::draw_key_point(const cv::Mat &imLeft, const cv::Mat &imRight, cv::KeyPoint &kp1, cv::KeyPoint &kp2) {
+
+    cv::Mat imLeftBGR;
+    imLeftBGR = imLeft.clone();
+    cv::cvtColor(imLeft, imLeftBGR, cv::COLOR_GRAY2BGR);
+
+    cv::Mat imRightBGR;
+    imRightBGR = imRight.clone();
+    cv::cvtColor(imRight, imRightBGR, cv::COLOR_GRAY2BGR);
+
+
+    const int height = max(imLeftBGR.rows, imRightBGR.rows);
+    const int width = imLeftBGR.cols + imRightBGR.cols;
+    cv::Mat output(height, width, CV_8UC3, cv::Scalar(0, 0, 0));
+    imLeftBGR.copyTo(output(cv::Rect(0, 0, imLeftBGR.cols, imLeftBGR.rows)));
+    imRightBGR.copyTo(output(cv::Rect(imLeftBGR.cols, 0, imRightBGR.cols, imRightBGR.rows)));
+
+
+    cv::Point2f left = kp1.pt;
+    circle(output, left, 1, cv::Scalar(0, 0, 255), 2);
+
+    cv::Point2f right = (kp2.pt + cv::Point2f((float)imLeftBGR.cols, 0.f));
+    circle(output, right, 1, cv::Scalar(0, 255, 0), 2);
 
     cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/output.png", output);
 
