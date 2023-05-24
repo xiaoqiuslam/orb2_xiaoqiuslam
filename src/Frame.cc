@@ -94,12 +94,28 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     cv::cvtColor(imRight, imRightBGR, cv::COLOR_GRAY2BGR);
     cv::drawKeypoints(imRightBGR, mvKeysRight, imRightBGR, cv::Scalar(0, 255, 0));
 
-    cv::Mat mergedImage(imLeftBGR.rows, imLeftBGR.cols + imRightBGR.cols, imLeftBGR.type());
-    imLeftBGR.copyTo(mergedImage(cv::Rect(0, 0, imLeftBGR.cols, imLeftBGR.rows)));
-    imRightBGR.copyTo(mergedImage(cv::Rect(imLeftBGR.cols, 0, imRightBGR.cols, imRightBGR.rows)));
+
+    const int height = max(imLeftBGR.rows, imRightBGR.rows);
+    const int width = imLeftBGR.cols + imRightBGR.cols;
+    cv::Mat output(height, width, CV_8UC3, cv::Scalar(0, 0, 0));
+    imLeftBGR.copyTo(output(cv::Rect(0, 0, imLeftBGR.cols, imLeftBGR.rows)));
+    imRightBGR.copyTo(output(cv::Rect(imLeftBGR.cols, 0, imRightBGR.cols, imRightBGR.rows)));
 
 
-    cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/KeyPoints.png",mergedImage);
+    for (size_t i = 0; i < mvKeys.size(); i++)
+    {
+        cv::Point2f left = mvKeys[i].pt;
+        circle(output, left, 1, cv::Scalar(0, 0, 255), 2);
+    }
+
+    for (size_t i = 0; i < mvKeysRight.size(); i++)
+    {
+        cv::Point2f right = (mvKeysRight[i].pt + cv::Point2f((float)imLeftBGR.cols, 0.f));
+        circle(output, right, 1, cv::Scalar(0, 255, 0), 2);
+    }
+
+    cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/output.png", output);
+
 
 #endif
 
