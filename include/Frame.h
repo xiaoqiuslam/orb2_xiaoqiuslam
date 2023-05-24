@@ -98,6 +98,9 @@ public:
     // Backprojects a keypoint (if stereo/depth info available) into 3D world coordinates.
     cv::Mat UnprojectStereo(const int &i);
 
+    cv::Mat draw_key_point(const cv::Mat &src1, const cv::Mat &src2, vector<cv::KeyPoint> &kpt1, vector<cv::KeyPoint> &kpt2);
+
+
 public:
 
     cv::Mat m_image_Left_BGR;

@@ -84,38 +84,9 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
 
 #ifdef DRAW_KEYPOINTS
 
-    cv::Mat imLeftBGR;
-    imLeftBGR = imLeft.clone();
-    cv::cvtColor(imLeft, imLeftBGR, cv::COLOR_GRAY2BGR);
-    cv::drawKeypoints(imLeftBGR, mvKeys, imLeftBGR, cv::Scalar(0, 0, 255));
-
-    cv::Mat imRightBGR;
-    imRightBGR = imRight.clone();
-    cv::cvtColor(imRight, imRightBGR, cv::COLOR_GRAY2BGR);
-    cv::drawKeypoints(imRightBGR, mvKeysRight, imRightBGR, cv::Scalar(0, 255, 0));
-
-
-    const int height = max(imLeftBGR.rows, imRightBGR.rows);
-    const int width = imLeftBGR.cols + imRightBGR.cols;
-    cv::Mat output(height, width, CV_8UC3, cv::Scalar(0, 0, 0));
-    imLeftBGR.copyTo(output(cv::Rect(0, 0, imLeftBGR.cols, imLeftBGR.rows)));
-    imRightBGR.copyTo(output(cv::Rect(imLeftBGR.cols, 0, imRightBGR.cols, imRightBGR.rows)));
-
-
-    for (size_t i = 0; i < mvKeys.size(); i++)
-    {
-        cv::Point2f left = mvKeys[i].pt;
-        circle(output, left, 1, cv::Scalar(0, 0, 255), 2);
-    }
-
-    for (size_t i = 0; i < mvKeysRight.size(); i++)
-    {
-        cv::Point2f right = (mvKeysRight[i].pt + cv::Point2f((float)imLeftBGR.cols, 0.f));
-        circle(output, right, 1, cv::Scalar(0, 255, 0), 2);
-    }
-
-    cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/output.png", output);
-
+    cv::Mat show = draw_key_point(imLeft, imRight, mvKeys, mvKeysRight);
+    cv::imshow("show", show);
+    cv::waitKey();
 
 #endif
 
@@ -788,6 +759,44 @@ cv::Mat Frame::UnprojectStereo(const int &i)
     }
     else
         return cv::Mat();
+}
+
+
+cv::Mat Frame::draw_key_point(const cv::Mat &imLeft, const cv::Mat &imRight, vector<cv::KeyPoint> &mvKeys, vector<cv::KeyPoint> &mvKeysRight) {
+
+    cv::Mat imLeftBGR;
+    imLeftBGR = imLeft.clone();
+    cv::cvtColor(imLeft, imLeftBGR, cv::COLOR_GRAY2BGR);
+    cv::drawKeypoints(imLeftBGR, mvKeys, imLeftBGR, cv::Scalar(0, 0, 255));
+
+    cv::Mat imRightBGR;
+    imRightBGR = imRight.clone();
+    cv::cvtColor(imRight, imRightBGR, cv::COLOR_GRAY2BGR);
+    cv::drawKeypoints(imRightBGR, mvKeysRight, imRightBGR, cv::Scalar(0, 255, 0));
+
+
+    const int height = max(imLeftBGR.rows, imRightBGR.rows);
+    const int width = imLeftBGR.cols + imRightBGR.cols;
+    cv::Mat output(height, width, CV_8UC3, cv::Scalar(0, 0, 0));
+    imLeftBGR.copyTo(output(cv::Rect(0, 0, imLeftBGR.cols, imLeftBGR.rows)));
+    imRightBGR.copyTo(output(cv::Rect(imLeftBGR.cols, 0, imRightBGR.cols, imRightBGR.rows)));
+
+
+    for (size_t i = 0; i < mvKeys.size(); i++)
+    {
+        cv::Point2f left = mvKeys[i].pt;
+        circle(output, left, 1, cv::Scalar(0, 0, 255), 2);
+    }
+
+    for (size_t i = 0; i < mvKeysRight.size(); i++)
+    {
+        cv::Point2f right = (mvKeysRight[i].pt + cv::Point2f((float)imLeftBGR.cols, 0.f));
+        circle(output, right, 1, cv::Scalar(0, 255, 0), 2);
+    }
+
+    cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/output.png", output);
+
+    return output;
 }
 
 } //namespace ORB_SLAM
