@@ -537,11 +537,30 @@ void Frame::ComputeStereoMatches()
         std::cout << std::endl;
     }
 
+    cv::line(m_image_Right_BGR, cv::Point(0, 5), cv::Point(m_image_Right_BGR.cols - 100, 5), cv::Scalar(0, 0, 255), 2);
+    cv::arrowedLine(m_image_Right_BGR, cv::Point(m_image_Right_BGR.cols - 100, 5), cv::Point(m_image_Right_BGR.cols - 10, 5), cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
+    cv::putText(m_image_Right_BGR, "X", cv::Point(m_image_Right_BGR.cols - 100, 30), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
+    cv::putText(m_image_Right_BGR, "Width: " + std::to_string(m_image_Right_BGR.cols), cv::Point(m_image_Right_BGR.cols - 100, 50), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 1, cv::LINE_AA);
 
+    // 绘制Y轴
+    cv::line(m_image_Right_BGR, cv::Point(5, 0), cv::Point(5, m_image_Right_BGR.rows - 100), cv::Scalar(0, 255, 0), 2);
+    cv::arrowedLine(m_image_Right_BGR, cv::Point(5, m_image_Right_BGR.rows - 100), cv::Point(5, m_image_Right_BGR.rows - 5), cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
+    cv::putText(m_image_Right_BGR, "Y", cv::Point(10, m_image_Right_BGR.rows - 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
+    cv::putText(m_image_Right_BGR, "Height: " + std::to_string(m_image_Right_BGR.rows), cv::Point(10, m_image_Right_BGR.rows - 40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
 
-//    cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(ir) + ".png",m_image_Right_BGR);
-//    cv::imshow("m_image_Right_BGR", m_image_Right_BGR);
-//    cv::waitKey();
+    // 画列线
+    for (int i = 0; i < m_image_Right_BGR.cols; i += 50) {
+        cv::line(m_image_Right_BGR, cv::Point(i, 0), cv::Point(i, m_image_Right_BGR.rows), cv::Scalar(0, 199, 0));
+    }
+
+    // 画行线
+    for (int i = 0; i < m_image_Right_BGR.rows; i += 50) {
+        cv::line(m_image_Right_BGR, cv::Point(0, i), cv::Point(m_image_Right_BGR.cols, i), cv::Scalar(0, 199, 0));
+    }
+
+    cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(ir) + ".png",m_image_Right_BGR);
+    cv::imshow("m_image_Right_BGR", m_image_Right_BGR);
+    cv::waitKey();
 
     // Set limits for search
     const float minZ = mb;
