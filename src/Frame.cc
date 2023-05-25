@@ -486,45 +486,60 @@ void Frame::ComputeStereoMatches()
     mvDepth = vector<float>(N,-1.0f);
 
     const int thOrbDist = (ORBmatcher::TH_HIGH+ORBmatcher::TH_LOW)/2;
+    std::cout << " ORBmatcher::TH_HIGH " << ORBmatcher::TH_HIGH << std::endl;
+    std::cout << " ORBmatcher::TH_LOW " << ORBmatcher::TH_LOW << std::endl;
+    std::cout << " thOrbDist " << thOrbDist << std::endl;
 
     const int nRows = mpORBextractorLeft->mvImagePyramid[0].rows;
+    std::cout << " nRows " << nRows << std::endl;
 
     //Assign keypoints to row table
     vector<vector<size_t> > vRowIndices(nRows,vector<size_t>());
+    std::cout << " vRowIndices.size() " << vRowIndices.size() << std::endl;
 
     for(int i=0; i<nRows; i++)
         vRowIndices[i].reserve(200);
 
     const int Nr = mvKeysRight.size();
+    std::cout << " Nr " << Nr << std::endl;
 
     static int ir = 0;
-    for(int iR=0; iR<Nr; iR++)
+
+    std::map<float, int> valueCounts;
+    for(int iR=0; iR<mvKeysRight.size(); iR++)
     {
         const cv::KeyPoint &kp = mvKeysRight[iR];
         const float &kpY = kp.pt.y;
         const float r = 2.0f*mvScaleFactors[mvKeysRight[iR].octave];
-
-        cv::circle(m_image_Right_BGR,kp.pt,1,cv::Scalar(255,0,0),2);
-//        cv::imshow("m_image_Right_BGR", m_image_Right_BGR);
-//        cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iR) + ".png",m_image_Right_BGR);
-//        cv::waitKey();
+        valueCounts[r]++;
 
         const int minr = floor(kpY-r);
         const int maxr = ceil(kpY+r);
 
-
         // x 向右 y向下 原点在左上
         for(int yi=minr;yi<=maxr;yi++){
             vRowIndices[yi].push_back(iR);
-            cv::circle(m_image_Right_BGR,cv::Point2f(kp.pt.x, maxr),1,cv::Scalar(0,255,0),2);
-//            cv::imshow("m_image_Right_BGR", m_image_Right_BGR);
-//            cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iR) + "_" + to_string(yi) + ".png",m_image_Right_BGR);
-//            cv::waitKey();
         }
         ir = iR;
     }
 
-    cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(ir) + ".png",m_image_Right_BGR);
+    // 打印每个值及其对应的个数
+    for (const auto& entry : valueCounts) {
+        std::cout << "r: " << entry.first << ", Count: " << entry.second << std::endl;
+    }
+
+    // 打印vRowIndices的值
+    for (size_t i = 0; i < vRowIndices.size(); ++i) {
+        std::cout << "Row " << i << ": ";
+        for (size_t j = 0; j < vRowIndices[i].size(); ++j) {
+            std::cout << vRowIndices[i][j] << " ";
+        }
+        std::cout << std::endl;
+    }
+
+
+
+//    cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(ir) + ".png",m_image_Right_BGR);
 //    cv::imshow("m_image_Right_BGR", m_image_Right_BGR);
 //    cv::waitKey();
 
@@ -545,9 +560,9 @@ void Frame::ComputeStereoMatches()
         const float &uL = kpL.pt.x;
 
         cv::circle(m_image_Left_BGR,mvKeys[iL].pt,1,cv::Scalar(0,0,255),2);
-        cv::imshow("m_image_Left_BGR", m_image_Left_BGR);
-        cv::waitKey();
-        cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iL) + ".png",m_image_Left_BGR);
+//        cv::imshow("m_image_Left_BGR", m_image_Left_BGR);
+//        cv::waitKey();
+//        cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iL) + ".png",m_image_Left_BGR);
 
         const vector<size_t> &vCandidates = vRowIndices[vL];
 
@@ -585,9 +600,9 @@ void Frame::ComputeStereoMatches()
             pt2.y=kpR.pt.y+5;
             cv::rectangle(m_image_Right_BGR,pt1,pt2,cv::Scalar(0,0,100));
             cv::circle(m_image_Right_BGR,kpR.pt,1,cv::Scalar(0,0,100),2);
-            cv::imshow("m_image_Right_BGR", m_image_Right_BGR);
-            cv::waitKey();
-            cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iC) + "_m_image_Right_BGR.png",m_image_Right_BGR);
+//            cv::imshow("m_image_Right_BGR", m_image_Right_BGR);
+//            cv::waitKey();
+//            cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iC) + "_m_image_Right_BGR.png",m_image_Right_BGR);
 
 
             const float &uR = kpR.pt.x;
@@ -776,7 +791,7 @@ cv::Mat Frame::draw_key_point(const cv::Mat &imLeft, const cv::Mat &imRight, vec
         circle(output, right, 1, cv::Scalar(0, 255, 0), 2);
     }
 
-    cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/output.png", output);
+//    cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/output.png", output);
 
     return output;
 }
@@ -807,7 +822,7 @@ cv::Mat Frame::draw_key_point(const cv::Mat &imLeft, const cv::Mat &imRight, cv:
     cv::Point2f right = (kp2.pt + cv::Point2f((float)imLeftBGR.cols, 0.f));
     circle(output, right, 1, cv::Scalar(0, 255, 0), 2);
 
-    cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/output.png", output);
+//    cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/output.png", output);
 
     return output;
 }

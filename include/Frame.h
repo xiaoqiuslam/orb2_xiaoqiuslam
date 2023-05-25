@@ -32,6 +32,11 @@
 
 #include <opencv2/opencv.hpp>
 
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <sstream>
+
 namespace ORB_SLAM2
 {
 #define FRAME_GRID_ROWS 48
