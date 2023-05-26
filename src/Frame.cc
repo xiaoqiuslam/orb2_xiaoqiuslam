@@ -506,6 +506,7 @@ void Frame::ComputeStereoMatches()
     static int ir = 0;
 
     std::map<float, int> valueCounts;
+    std::map<int, std::vector<int>> ir_to_yi;
     for(int iR=0; iR<mvKeysRight.size(); iR++)
     {
         const cv::KeyPoint &kp = mvKeysRight[iR];
@@ -519,43 +520,58 @@ void Frame::ComputeStereoMatches()
         // x 向右 y向下 原点在左上
         for(int yi=minr;yi<=maxr;yi++){
             vRowIndices[yi].push_back(iR);
+            ir_to_yi[iR].push_back(yi);  // add yi to the corresponding iR in the map
         }
         ir = iR;
+
     }
 
-    // 打印每个值及其对应的个数
+
+    // 打印每个特征点可能在哪些行中 Print all iR and corresponding yi values
+    std::ofstream file("/home/q/orb2_xiaoqiuslam/tmp/ir_to_yi.txt");
+
+    // Write valueCounts to the file
     for (const auto& entry : valueCounts) {
-        std::cout << "r: " << entry.first << ", Count: " << entry.second << std::endl;
+        file << "r(2倍图像金字塔缩放系数): " << entry.first << ", 这个图像上提取到的特征点数目是: " << entry.second << "\n";
     }
 
-    // 打印vRowIndices的值
-    for (size_t i = 0; i < vRowIndices.size(); ++i) {
-        std::cout << "Row " << i << ": ";
-        for (size_t j = 0; j < vRowIndices[i].size(); ++j) {
-            std::cout << vRowIndices[i][j] << " ";
+    for (const auto& pair : ir_to_yi) {
+        file << "iR(keypoint) " << pair.first << " in " << pair.second.size() << " rows: ";
+        for (const auto& yi : pair.second) {
+            file << yi << " ";
         }
-        std::cout << std::endl;
+        file << "\n";
     }
+
+    // Write vRowIndices to the file 打印vRowIndices的值 打印每行中存在的特征点
+    for (size_t i = 0; i < vRowIndices.size(); ++i) {
+        file << "Row " << i << " " << vRowIndices[i].size() << " key_point ";
+        for (size_t j = 0; j < vRowIndices[i].size(); ++j) {
+            file << vRowIndices[i][j] << " ";
+        }
+        file << "\n";
+    }
+    file.close();
 
     cv::line(m_image_Right_BGR, cv::Point(0, 5), cv::Point(m_image_Right_BGR.cols - 100, 5), cv::Scalar(0, 0, 255), 2);
     cv::arrowedLine(m_image_Right_BGR, cv::Point(m_image_Right_BGR.cols - 100, 5), cv::Point(m_image_Right_BGR.cols - 10, 5), cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
-    cv::putText(m_image_Right_BGR, "X", cv::Point(m_image_Right_BGR.cols - 100, 30), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
-    cv::putText(m_image_Right_BGR, "Width: " + std::to_string(m_image_Right_BGR.cols), cv::Point(m_image_Right_BGR.cols - 100, 50), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 1, cv::LINE_AA);
+    cv::putText(m_image_Right_BGR, "X", cv::Point(m_image_Right_BGR.cols - 150, 30), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
+    cv::putText(m_image_Right_BGR, "Width Col: " + std::to_string(m_image_Right_BGR.cols), cv::Point(m_image_Right_BGR.cols - 150, 50), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 1, cv::LINE_AA);
 
     // 绘制Y轴
     cv::line(m_image_Right_BGR, cv::Point(5, 0), cv::Point(5, m_image_Right_BGR.rows - 100), cv::Scalar(0, 255, 0), 2);
     cv::arrowedLine(m_image_Right_BGR, cv::Point(5, m_image_Right_BGR.rows - 100), cv::Point(5, m_image_Right_BGR.rows - 5), cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
     cv::putText(m_image_Right_BGR, "Y", cv::Point(10, m_image_Right_BGR.rows - 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
-    cv::putText(m_image_Right_BGR, "Height: " + std::to_string(m_image_Right_BGR.rows), cv::Point(10, m_image_Right_BGR.rows - 40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
+    cv::putText(m_image_Right_BGR, "Height Row: " + std::to_string(m_image_Right_BGR.rows), cv::Point(10, m_image_Right_BGR.rows - 40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
 
     // 画列线
-    for (int i = 0; i < m_image_Right_BGR.cols; i += 50) {
-        cv::line(m_image_Right_BGR, cv::Point(i, 0), cv::Point(i, m_image_Right_BGR.rows), cv::Scalar(0, 199, 0));
+    for (int i = 0; i < m_image_Right_BGR.cols; i += 100) {
+        cv::line(m_image_Right_BGR, cv::Point(i, 0), cv::Point(i, m_image_Right_BGR.rows), cv::Scalar(255, 0, 0));
     }
 
     // 画行线
-    for (int i = 0; i < m_image_Right_BGR.rows; i += 50) {
-        cv::line(m_image_Right_BGR, cv::Point(0, i), cv::Point(m_image_Right_BGR.cols, i), cv::Scalar(0, 199, 0));
+    for (int i = 0; i < m_image_Right_BGR.rows; i += 100) {
+        cv::line(m_image_Right_BGR, cv::Point(0, i), cv::Point(m_image_Right_BGR.cols, i), cv::Scalar(255, 0, 0));
     }
 
     cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(ir) + ".png",m_image_Right_BGR);
@@ -564,44 +580,51 @@ void Frame::ComputeStereoMatches()
 
     // Set limits for search
     const float minZ = mb;
+    std::cout << " minZ " << minZ << std::endl;
     const float minD = 0;
     const float maxD = mbf/minZ;
+    std::cout << " mbf " << mbf << std::endl;
+    std::cout << " maxD " << maxD << std::endl;
 
     // For each left keypoint search a match in the right image
     vector<pair<int, int> > vDistIdx;
     vDistIdx.reserve(N);
 
-    for(int iL=0; iL<N; iL++)
+    for(int iL=0; iL<mvKeys.size(); iL++)
     {
         const cv::KeyPoint &kpL = mvKeys[iL];
         const int &levelL = kpL.octave;
         const float &vL = kpL.pt.y;
         const float &uL = kpL.pt.x;
 
-        cv::circle(m_image_Left_BGR,mvKeys[iL].pt,1,cv::Scalar(0,0,255),2);
-//        cv::imshow("m_image_Left_BGR", m_image_Left_BGR);
-//        cv::waitKey();
-//        cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iL) + ".png",m_image_Left_BGR);
-
+        // 获取右目图像中 vL 行的所有特征点
         const vector<size_t> &vCandidates = vRowIndices[vL];
 
         if(vCandidates.empty())
             continue;
 
-        std::cout << " minD " << minD << " maxD " << maxD << std::endl;
+//        cv::circle(m_image_Left_BGR,mvKeys[iL].pt,1,cv::Scalar(0,0,255),2);
+//        cv::imshow("m_image_Left_BGR", m_image_Left_BGR);
+//        cv::waitKey();
+//        cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iL) + ".png",m_image_Left_BGR);
 
         const float minU = uL-maxD;
         const float maxU = uL-minD;
-
-        std::cout << " minU " << minU << " maxU " << maxU << std::endl;
-
         if(maxU<0)
             continue;
 
-        int bestDist = ORBmatcher::TH_HIGH;
-        size_t bestIdxR = 0;
+        std::cout << " minD " << minD << " maxD " << maxD << std::endl;
+        std::cout << " minU " << minU << " maxU " << maxU << std::endl;
 
+        int bestDist = ORBmatcher::TH_HIGH;
+        std::cout << " bestDist " << bestDist << std::endl;
+
+        size_t bestIdxR = 0;
         const cv::Mat &dL = mDescriptors.row(iL);
+
+        // 打印图像的宽度和高度
+        std::cout << "Width: " << mDescriptors.cols << std::endl;
+        std::cout << "Height: " << mDescriptors.rows << std::endl;
 
         // Compare descriptor to right keypoints
         for(size_t iC=0; iC<vCandidates.size(); iC++)
