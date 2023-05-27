@@ -632,9 +632,11 @@ namespace ORB_SLAM2
             if(vCandidates.empty())
                 continue;
 
+
             const float minU = uL-maxD;
             const float maxU = uL-minD;
 
+            // 1. 通过视差过滤特征点
             if(maxU<0)
                 continue;
 
@@ -650,16 +652,23 @@ namespace ORB_SLAM2
                 const size_t iR = vCandidates[iC];
                 const cv::KeyPoint &kpR = mvKeysRight[iR];
 
+                // 1. 通过金字塔中图像层级过滤特征点
                 if(kpR.octave<levelL-1 || kpR.octave>levelL+1)
                     continue;
 
+                // 2. 通过视差过滤特征点
                 const float &uR = kpR.pt.x;
 
+                // uL-maxD
+                // const float minU = uL-maxD;
+                // const float maxU = uL-minD;
                 if(uR>=minU && uR<=maxU)
                 {
                     const cv::Mat &dR = mDescriptorsRight.row(iR);
+                    // 计算两个特征点之间的描述子的距离
                     const int dist = ORBmatcher::DescriptorDistance(dL,dR);
 
+                    // 更新距离 和 匹配特征点的索引
                     if(dist<bestDist)
                     {
                         bestDist = dist;
@@ -667,6 +676,8 @@ namespace ORB_SLAM2
                     }
                 }
             }
+
+            // 当代码执行到这里会计算每一个匹配的特征点，但是有可能是距离值比较大的。
 
 
             // Subpixel match by correlation
