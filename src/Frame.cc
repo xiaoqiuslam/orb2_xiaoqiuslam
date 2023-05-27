@@ -24,6 +24,7 @@
 #include <thread>
 
 //#define DRAW_KEY_POINT
+#define BEST_DIST
 
 namespace ORB_SLAM2
 {
@@ -683,6 +684,10 @@ namespace ORB_SLAM2
             // Subpixel match by correlation
             if(bestDist<thOrbDist)
             {
+
+#ifdef BEST_DIST
+
+                // 当代码执行到这里的时候 找到的特征点才是距离符合要求的特征点
                 // 1. 这里生成一张大图包括左右目
                 const int height = max(m_image_Left_BGR.rows, m_image_Right_BGR.rows);
                 const int width = m_image_Left_BGR.cols + m_image_Right_BGR.cols;
@@ -703,7 +708,9 @@ namespace ORB_SLAM2
                             cv::Point(mvKeysRight[bestIdxR].pt.x + m_image_Left_BGR.cols + 10,
                                       mvKeysRight[bestIdxR].pt.y + 10),
                             cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0), 1);
-                cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iL) + "_output.png", output);
+                cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iL) +  "_output.png", output);
+
+#endif
 
                 // coordinates in image pyramid at keypoint scale
                 const float uR0 = mvKeysRight[bestIdxR].pt.x;
