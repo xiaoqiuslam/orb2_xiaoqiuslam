@@ -23,6 +23,8 @@
 #include "ORBmatcher.h"
 #include <thread>
 
+//#define DRAW_KEY_POINT
+
 namespace ORB_SLAM2
 {
 
@@ -542,6 +544,65 @@ namespace ORB_SLAM2
             file << "\n";
         }
 
+#ifdef DRAW_KEY_POINT
+
+        for(int iL=0; iL<mvKeys.size(); iL++)
+        {
+            const cv::KeyPoint &kpL = mvKeys[iL];
+
+            // 循环绘制和左目当前特征点 和 vRowIndices[i]
+            // 1. 这里生成一张大图包括左右目
+            const int height = max(m_image_Left_BGR.rows, m_image_Right_BGR.rows);
+            const int width = m_image_Left_BGR.cols + m_image_Right_BGR.cols;
+            cv::Mat output(height, width, CV_8UC3, cv::Scalar(0, 0, 0));
+            m_image_Left_BGR.copyTo(output(cv::Rect(0, 0, m_image_Left_BGR.cols, m_image_Left_BGR.rows)));
+            m_image_Right_BGR.copyTo(output(cv::Rect(m_image_Left_BGR.cols, 0, m_image_Right_BGR.cols, m_image_Right_BGR.rows)));
+
+            // 左目绘制x轴
+            cv::line(output, cv::Point(5, 5), cv::Point(m_image_Left_BGR.cols - 100, 5), cv::Scalar(0, 0, 255), 2);
+            cv::arrowedLine(output, cv::Point(m_image_Left_BGR.cols - 100, 5), cv::Point(m_image_Left_BGR.cols - 10, 5), cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
+            cv::putText(output, "X", cv::Point(m_image_Left_BGR.cols - 150, 30), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
+            cv::putText(output, "Width Col: " + std::to_string(m_image_Left_BGR.cols), cv::Point(m_image_Left_BGR.cols - 150, 50), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 1, cv::LINE_AA);
+
+            // 右目绘制x轴
+            cv::line(output, cv::Point(m_image_Left_BGR.cols + 5, 5), cv::Point(m_image_Left_BGR.cols + m_image_Right_BGR.cols - 100, 5), cv::Scalar(0, 0, 255), 2);
+            cv::arrowedLine(output, cv::Point(m_image_Left_BGR.cols + m_image_Right_BGR.cols - 100, 5), cv::Point(m_image_Left_BGR.cols + m_image_Right_BGR.cols - 10, 5), cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
+            cv::putText(output, "X", cv::Point(m_image_Left_BGR.cols + m_image_Right_BGR.cols - 150, 30), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
+            cv::putText(output, "Width Col: " + std::to_string(m_image_Right_BGR.cols), cv::Point(m_image_Left_BGR.cols + m_image_Right_BGR.cols - 150, 50), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 1, cv::LINE_AA);
+
+            // 左目绘制Y轴
+            cv::line(output, cv::Point(5, 5), cv::Point(5, m_image_Left_BGR.rows - 100), cv::Scalar(0, 255, 0), 2);
+            cv::arrowedLine(output, cv::Point(5, m_image_Left_BGR.rows - 100), cv::Point(5, m_image_Left_BGR.rows - 5), cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
+            cv::putText(output, "Y", cv::Point(10, m_image_Left_BGR.rows - 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
+            cv::putText(output, "Height Row: " + std::to_string(m_image_Left_BGR.rows), cv::Point(10, m_image_Left_BGR.rows - 40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
+
+            // 右目绘制Y轴
+            cv::line(output, cv::Point(m_image_Left_BGR.cols + 5, 5), cv::Point(m_image_Left_BGR.cols + 5, m_image_Right_BGR.rows - 100), cv::Scalar(0, 255, 0), 2);
+            cv::arrowedLine(output, cv::Point(m_image_Left_BGR.cols + 5, m_image_Right_BGR.rows - 100), cv::Point(m_image_Left_BGR.cols + 5, m_image_Right_BGR.rows - 5), cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
+            cv::putText(output, "Y", cv::Point(m_image_Left_BGR.cols + 10, m_image_Right_BGR.rows - 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
+            cv::putText(output, "Height Row: " + std::to_string(m_image_Right_BGR.rows), cv::Point(m_image_Left_BGR.cols + 10, m_image_Right_BGR.rows - 40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
+
+            // 2. 这里把左目特征点绘制大图的左目上
+            circle(output, kpL.pt, 2, cv::Scalar(255, 0, 0), 2);
+            cv::putText(output,"iL " + std::to_string(int(iL)) + ", X " + std::to_string(int(kpL.pt.x)) + ", Y " + std::to_string(int(kpL.pt.y)),
+                        cv::Point(kpL.pt.x - 25, kpL.pt.y - 10), cv::FONT_HERSHEY_SIMPLEX, 0.4,
+                        cv::Scalar(255, 0, 0), 1);
+
+            for(size_t iC=0; iC<vRowIndices[kpL.pt.y].size(); iC++) {
+                const size_t iR = vRowIndices[kpL.pt.y][iC];
+                const cv::KeyPoint &kpR = mvKeysRight[iR];
+
+                // 3. 这里把右目特征点绘制大图的右目上，并且每一个特征点是一张图像
+                circle(output, (kpR.pt + cv::Point2f((float) m_image_Left_BGR.cols, 0.f)), 2,cv::Scalar(255, 0, 0), 2);
+                cv::putText(output,"iC " + std::to_string(int(iC)) + ", X " + std::to_string(int(kpR.pt.x)) + ", Y " + std::to_string(int(kpR.pt.y)),
+                            cv::Point(kpR.pt.x + m_image_Left_BGR.cols - 15,kpR.pt.y - 15),
+                            cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255, 0, 0), 1);
+                cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iL) + "_" + to_string(iC) + ".png",output);
+            }
+        }
+
+#endif
+
         /**
         // 畸变矫正后的左右目两张图，在像素点在列方向(x)存在最大视差maxd和最小视差mind [pixel.x + minD, pixel.x + maxD]
         // minD = 0
@@ -561,6 +622,7 @@ namespace ORB_SLAM2
         for(int iL=0; iL<N; iL++)
         {
             const cv::KeyPoint &kpL = mvKeys[iL];
+
             const int &levelL = kpL.octave;
             const float &vL = kpL.pt.y;
             const float &uL = kpL.pt.x;
