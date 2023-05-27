@@ -469,32 +469,19 @@ namespace ORB_SLAM2
         }
     }
 
-    void Frame::ComputeStereoMatches()
-    {
-        mvuRight = vector<float>(N,-1.0f);
-        mvDepth = vector<float>(N,-1.0f);
+    void Frame::ComputeStereoMatches() {
+        std::ofstream file("/home/q/orb2_xiaoqiuslam/tmp/ir_to_yi.txt");
+        mvuRight = vector<float>(N, -1.0f);
+        mvDepth = vector<float>(N, -1.0f);
 
-        // orb特征点描述子相似度阈值
-        const int thOrbDist = (ORBmatcher::TH_HIGH+ORBmatcher::TH_LOW)/2;
+        const int thOrbDist = (ORBmatcher::TH_HIGH + ORBmatcher::TH_LOW) / 2;
 
-        // 原始图像（金字塔底层0层）的高度或行数
         const int nRows = mpORBextractorLeft->mvImagePyramid[0].rows;
 
         //Assign keypoints to row table
-        // 二维向量每一行存储的是以r为半径的多行的特征点
-        // 一个特征点存在于多行
-        // 一行有多个特征点
-        /*
-         *  Row 25 4 key_point 249 314 595 652
-            Row 26 7 key_point 115 168 249 314 373 595 652
-            Row 27 9 key_point 115 168 249 314 373 473 595 652 653
+        vector<vector<size_t> > vRowIndices(nRows, vector<size_t>());
 
-            iR(keypoint) 87 in 5 rows: 245 246 247 248 249
-            iR(keypoint) 190 in 5 rows: 246 247 248 249 250
-         */
-        vector<vector<size_t> > vRowIndices(nRows,vector<size_t>());
-
-        for(int i=0; i<nRows; i++)
+        for (int i = 0; i < nRows; i++)
             vRowIndices[i].reserve(200);
 
         const int Nr = mvKeysRight.size();
@@ -502,286 +489,265 @@ namespace ORB_SLAM2
         std::map<float, int> valueCounts;
         std::map<int, std::vector<int>> ir_to_yi;
 
-        for(int iR=0; iR<Nr; iR++)
-        {
+        for (int iR = 0; iR < Nr; iR++) {
             const cv::KeyPoint &kp = mvKeysRight[iR];
             const float &kpY = kp.pt.y;
-            const float r = 2.0f*mvScaleFactors[mvKeysRight[iR].octave];
+            const float r = 2.0f * mvScaleFactors[mvKeysRight[iR].octave];
             valueCounts[r]++;
-            const int maxr = ceil(kpY+r);
-            const int minr = floor(kpY-r);
+            const int maxr = ceil(kpY + r);
+            const int minr = floor(kpY - r);
 
-            for(int yi=minr;yi<=maxr;yi++){
+            for (int yi = minr; yi <= maxr; yi++) {
                 vRowIndices[yi].push_back(iR);
                 ir_to_yi[iR].push_back(yi);
             }
-        }
 
-        std::ofstream file("/home/q/orb2_xiaoqiuslam/tmp/ir_to_yi.txt");
-
-        // Write valueCounts to the file
-        for (const auto &entry: valueCounts) {
-            file << "r(2倍图像金字塔缩放系数): " << entry.first << ", 这个图像上提取到的特征点数目是: "
-                 << entry.second << "\n";
-        }
-
-        for (const auto &pair: ir_to_yi) {
-            file << "iR(keypoint) " << pair.first << " in " << pair.second.size() << " rows: ";
-            for (const auto &yi: pair.second) {
-                file << yi << " ";
+            // Write valueCounts to the file
+            for (const auto &entry: valueCounts) {
+                file << "r(2倍图像金字塔缩放系数): " << entry.first << ", 这个图像上提取到的特征点数目是: "
+                     << entry.second << "\n";
             }
-            file << "\n";
-        }
 
-        // Write vRowIndices to the file 打印vRowIndices的值 打印每行中存在的特征点
-        for (size_t i = 0; i < vRowIndices.size(); ++i) {
-            file << "Row " << i << " " << vRowIndices[i].size() << " key_point ";
-            for (size_t j = 0; j < vRowIndices[i].size(); ++j) {
-                file << vRowIndices[i][j] << " ";
+            for (const auto &pair: ir_to_yi) {
+                file << "iR(keypoint) " << pair.first << " in " << pair.second.size() << " rows: ";
+                for (const auto &yi: pair.second) {
+                    file << yi << " ";
+                }
+                file << "\n";
             }
-            file << "\n";
-        }
 
-        /**
-        // 畸变矫正后的左右目两张图，在像素点在列方向(x)存在最大视差maxd和最小视差mind [pixel.x + minD, pixel.x + maxD]
-        // minD = 0
-        // maxD = mbf(baseline multiplied by fx) / mb(Stereo baseline in meters)
-         */
+            // Write vRowIndices to the file 打印vRowIndices的值 打印每行中存在的特征点
+            for (size_t i = 0; i < vRowIndices.size(); ++i) {
+                file << "Row " << i << " " << vRowIndices[i].size() << " key_point ";
+                for (size_t j = 0; j < vRowIndices[i].size(); ++j) {
+                    file << vRowIndices[i][j] << " ";
+                }
+                file << "\n";
+            }
+
+            //    cv::line(m_image_Right_BGR, cv::Point(0, 5), cv::Point(m_image_Right_BGR.cols - 100, 5), cv::Scalar(0, 0, 255), 2);
+            //    cv::arrowedLine(m_image_Right_BGR, cv::Point(m_image_Right_BGR.cols - 100, 5), cv::Point(m_image_Right_BGR.cols - 10, 5), cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
+            //    cv::putText(m_image_Right_BGR, "X", cv::Point(m_image_Right_BGR.cols - 150, 30), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
+            //    cv::putText(m_image_Right_BGR, "Width Col: " + std::to_string(m_image_Right_BGR.cols), cv::Point(m_image_Right_BGR.cols - 150, 50), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 1, cv::LINE_AA);
+            //
+            //    // 绘制Y轴
+            //    cv::line(m_image_Right_BGR, cv::Point(5, 0), cv::Point(5, m_image_Right_BGR.rows - 100), cv::Scalar(0, 255, 0), 2);
+            //    cv::arrowedLine(m_image_Right_BGR, cv::Point(5, m_image_Right_BGR.rows - 100), cv::Point(5, m_image_Right_BGR.rows - 5), cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
+            //    cv::putText(m_image_Right_BGR, "Y", cv::Point(10, m_image_Right_BGR.rows - 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
+            //    cv::putText(m_image_Right_BGR, "Height Row: " + std::to_string(m_image_Right_BGR.rows), cv::Point(10, m_image_Right_BGR.rows - 40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
+            //
+            //    // 画列线
+            //    for (int i = 0; i < m_image_Right_BGR.cols; i += 100) {
+            //        cv::line(m_image_Right_BGR, cv::Point(i, 0), cv::Point(i, m_image_Right_BGR.rows), cv::Scalar(255, 0, 0));
+            //    }
+            //
+            //    // 画行线
+            //    for (int i = 0; i < m_image_Right_BGR.rows; i += 100) {
+            //        cv::line(m_image_Right_BGR, cv::Point(0, i), cv::Point(m_image_Right_BGR.cols, i), cv::Scalar(255, 0, 0));
+            //    }
+            //
+            //    cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(ir) + ".png",m_image_Right_BGR);
+            //    cv::imshow("m_image_Right_BGR", m_image_Right_BGR);
+            //    cv::waitKey();
+
+            // Set limits for search
+            const float minZ = mb;
+            const float minD = 0;
+            const float maxD = mbf / minZ;
+
+            // For each left keypoint search a match in the right image
+            vector<pair < int, int> > vDistIdx;
+            vDistIdx.reserve(N);
+
+            // 1. 这里生成一张大图包括左右目
+            const int height = max(m_image_Left_BGR.rows, m_image_Right_BGR.rows);
+            const int width = m_image_Left_BGR.cols + m_image_Right_BGR.cols;
+            cv::Mat output(height, width, CV_8UC3, cv::Scalar(0, 0, 0));
+
+            m_image_Left_BGR.copyTo(output(cv::Rect(0, 0, m_image_Left_BGR.cols, m_image_Left_BGR.rows)));
+            m_image_Right_BGR.copyTo(
+                    output(cv::Rect(m_image_Left_BGR.cols, 0, m_image_Right_BGR.cols, m_image_Right_BGR.rows)));
+
+            for (int iL = 0; iL < N; iL++) {
+                const cv::KeyPoint &kpL = mvKeys[iL];
+                const int &levelL = kpL.octave;
+                const float &vL = kpL.pt.y;
+                const float &uL = kpL.pt.x;
+
+//                std::cout << " iL " << iL << " uL " << uL << " vL " << vL << std::endl;
+                file << "iL: " << iL << " uL: " << uL << ", vL: " << vL << "\n";
+
+                // 获取右目图像中 vL 行的所有特征点
+                const vector<size_t> &vCandidates = vRowIndices[vL];
+//                std::cout << "右目图像上与左目相同行上有 " << vCandidates.size() << " 个特征点" << std::endl;
 
 
-        // Set limits for search
-        const float minZ = mb;
-        const float minD = 0;
-        const float maxD = mbf/minZ;
-
-        // For each left keypoint search a match in the right image
-        vector<pair<int, int> > vDistIdx;
-        vDistIdx.reserve(N);
-
-        for(int iL=0; iL<N; iL++)
-        {
-            const cv::KeyPoint &kpL = mvKeys[iL];
-            const int &levelL = kpL.octave;
-            const float &vL = kpL.pt.y;
-            const float &uL = kpL.pt.x;
-
-            const vector<size_t> &vCandidates = vRowIndices[vL];
-
-            if(vCandidates.empty())
-                continue;
-
-            const float minU = uL-maxD;
-            const float maxU = uL-minD;
-
-            if(maxU<0)
-                continue;
-
-            int bestDist = ORBmatcher::TH_HIGH;
-            size_t bestIdxR = 0;
-
-            const cv::Mat &dL = mDescriptors.row(iL);
-
-
-            // Compare descriptor to right keypoints
-            for(size_t iC=0; iC<vCandidates.size(); iC++)
-            {
-                const size_t iR = vCandidates[iC];
-                const cv::KeyPoint &kpR = mvKeysRight[iR];
-
-                if(kpR.octave<levelL-1 || kpR.octave>levelL+1)
+                if (vCandidates.empty())
                     continue;
 
-                const float &uR = kpR.pt.x;
+                const float minU = uL - maxD;
+                const float maxU = uL - minD;
 
-                if(uR>=minU && uR<=maxU)
-                {
-                    const cv::Mat &dR = mDescriptorsRight.row(iR);
-                    const int dist = ORBmatcher::DescriptorDistance(dL,dR);
+                if (maxU < 0)
+                    continue;
 
-                    if(dist<bestDist)
-                    {
-                        bestDist = dist;
-                        bestIdxR = iR;
-                    }
-                }
-            }
+                int bestDist = ORBmatcher::TH_HIGH;
+                size_t bestIdxR = 0;
+
+                const cv::Mat &dL = mDescriptors.row(iL);
+
+                // 打印图像的宽度和高度
+//                std::cout << "每个特征点描述子的的长度: " << mDescriptors.cols << std::endl;
+//                std::cout << "特征点=描述子数量: " << mDescriptors.rows << std::endl;
 
 
-            // Subpixel match by correlation
-            if(bestDist<thOrbDist)
-            {
-                // 1. 这里生成一张大图包括左右目
-                const int height = max(m_image_Left_BGR.rows, m_image_Right_BGR.rows);
-                const int width = m_image_Left_BGR.cols + m_image_Right_BGR.cols;
-                cv::Mat output(height, width, CV_8UC3, cv::Scalar(0, 0, 0));
-                m_image_Left_BGR.copyTo(output(cv::Rect(0, 0, m_image_Left_BGR.cols, m_image_Left_BGR.rows)));
-                m_image_Right_BGR.copyTo(output(cv::Rect(m_image_Left_BGR.cols, 0, m_image_Right_BGR.cols, m_image_Right_BGR.rows)));
                 // 2. 这里把左目特征点绘制大图的左目上
                 circle(output, kpL.pt, 1, cv::Scalar(0, 0, 255), 2);
                 cv::putText(output, "X: " + std::to_string(int(kpL.pt.x)) + ", Y: " + std::to_string(int(kpL.pt.y)),
                             cv::Point(kpL.pt.x + 10, kpL.pt.y + 10), cv::FONT_HERSHEY_SIMPLEX, 0.5,
                             cv::Scalar(0, 0, 255), 1);
+                cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iL) + "_output.png", output);
 
-                cv::circle(output, (mvKeysRight[bestIdxR].pt + cv::Point2f((float) m_image_Left_BGR.cols, 0.f)), 1,
-                           cv::Scalar(255, 0, 0), 2);
+                // Compare descriptor to right keypoints
+                for (size_t iC = 0; iC < vCandidates.size(); iC++) {
+                    const size_t iR = vCandidates[iC];
+                    const cv::KeyPoint &kpR = mvKeysRight[iR];
+
+                    std::cout << "iC " << iC << " kpR.pt.x " << kpR.pt.x << " kpR.pt.y " << kpR.pt.y << std::endl;
+
+                    if (kpR.octave < levelL - 1 || kpR.octave > levelL + 1)
+                        continue;
+
+                    const float &uR = kpR.pt.x;
+                    const float &vR = kpR.pt.y;
+
+                    if (uR >= minU && uR <= maxU) {
+                        const cv::Mat &dR = mDescriptorsRight.row(iR);
+                        const int dist = ORBmatcher::DescriptorDistance(dL, dR);
+
+
+
+                        // 3. 这里把右目特征点绘制大图的右目上，并且每一个特征点是一张图像
+                        circle(output, (kpR.pt + cv::Point2f((float) m_image_Left_BGR.cols, 0.f)), 1,
+                               cv::Scalar(0, 255, 0), 2);
+                        cv::putText(output,
+                                    "X: " + std::to_string(int(kpR.pt.x)) + ", Y: " + std::to_string(int(kpR.pt.y)) +
+                                    ", dist: " + std::to_string(int(dist)),
+                                    cv::Point(kpR.pt.x + m_image_Left_BGR.cols + (iC + 1) * 10,
+                                              kpR.pt.y + (iC + 1) * 10),
+                                    cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
+                        cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iC) + "_output.png", output);
+
+                        if (dist < bestDist) {
+                            bestDist = dist;
+                            bestIdxR = iR;
+                        }
+                    }
+                }
+
+                std::cout << " thOrbDist " << thOrbDist << " bestDist " << bestDist << " bestIdxR " << bestIdxR
+                          << std::endl;
+
+
+                file << "bestIdxR: " << bestIdxR << "\n";
+
+                circle(output, (mvKeysRight[bestIdxR].pt + cv::Point2f((float) m_image_Left_BGR.cols, 0.f)), 1,
+                       cv::Scalar(255, 0, 0), 2);
                 cv::putText(output, "X: " + std::to_string(int(mvKeysRight[bestIdxR].pt.x)) + ", Y: " +
                                     std::to_string(int(mvKeysRight[bestIdxR].pt.y)) + ", bestDist: " +
                                     std::to_string(int(bestDist)),
                             cv::Point(mvKeysRight[bestIdxR].pt.x + m_image_Left_BGR.cols + 10,
                                       mvKeysRight[bestIdxR].pt.y + 10),
                             cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0), 1);
-                cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/" + to_string(iL) + "_output.png", output);
+                cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/output.png", output);
 
-                // coordinates in image pyramid at keypoint scale
-                const float uR0 = mvKeysRight[bestIdxR].pt.x;
-                std::cout << " uR0 " << uR0 << std::endl;
+                // Subpixel match by correlation
+                if (bestDist < thOrbDist) {
 
-                const float scaleFactor = mvInvScaleFactors[kpL.octave];
-                std::cout << " scaleFactor " << scaleFactor << std::endl;
+                    // coordinates in image pyramid at keypoint scale
+                    const float uR0 = mvKeysRight[bestIdxR].pt.x;
+                    const float scaleFactor = mvInvScaleFactors[kpL.octave];
+                    const float scaleduL = round(kpL.pt.x * scaleFactor);
+                    const float scaledvL = round(kpL.pt.y * scaleFactor);
+                    const float scaleduR0 = round(uR0 * scaleFactor);
 
-                const float scaleduL = round(kpL.pt.x*scaleFactor);
-                std::cout << " scaleduL " << scaleduL << std::endl;
+                    // sliding window search
+                    const int w = 5;
+                    cv::Mat IL = mpORBextractorLeft->mvImagePyramid[kpL.octave].rowRange(scaledvL - w,
+                                                                                         scaledvL + w + 1).colRange(
+                            scaleduL - w, scaleduL + w + 1);
+                    IL.convertTo(IL, CV_32F);
+                    IL = IL - IL.at<float>(w, w) * cv::Mat::ones(IL.rows, IL.cols, CV_32F);
 
-                const float scaledvL = round(kpL.pt.y*scaleFactor);
-                std::cout << " scaledvL " << scaledvL << std::endl;
+                    int bestDist = INT_MAX;
+                    int bestincR = 0;
+                    const int L = 5;
+                    vector<float> vDists;
+                    vDists.resize(2 * L + 1);
 
-                const float scaleduR0 = round(uR0*scaleFactor);
-                std::cout << " scaleduR0 " << scaleduR0 << std::endl;
+                    const float iniu = scaleduR0 + L - w;
+                    const float endu = scaleduR0 + L + w + 1;
+                    if (iniu < 0 || endu >= mpORBextractorRight->mvImagePyramid[kpL.octave].cols)
+                        continue;
 
+                    for (int incR = -L; incR <= +L; incR++) {
+                        cv::Mat IR = mpORBextractorRight->mvImagePyramid[kpL.octave].rowRange(scaledvL - w,
+                                                                                              scaledvL + w +
+                                                                                              1).colRange(
+                                scaleduR0 + incR - w, scaleduR0 + incR + w + 1);
+                        IR.convertTo(IR, CV_32F);
+                        IR = IR - IR.at<float>(w, w) * cv::Mat::ones(IR.rows, IR.cols, CV_32F);
 
-                // sliding window search
-                const int w = 5;
-                std::cout << " kpL.octave " << kpL.octave << std::endl;
+                        float dist = cv::norm(IL, IR, cv::NORM_L1);
+                        if (dist < bestDist) {
+                            bestDist = dist;
+                            bestincR = incR;
+                        }
 
-                std::cout << " scaledvL " << scaledvL << std::endl;
-                std::cout << " scaleduL " << scaleduL << std::endl;
-
-                std::cout << " scaledvL-w " << scaledvL-w << std::endl;
-                std::cout << " scaledvL+w+1 " << scaledvL+w+1 << std::endl;
-
-                std::cout << " scaleduL-w " << scaledvL-w << std::endl;
-                std::cout << " scaleduL+w+1 " << scaledvL+w+1 << std::endl;
-
-                // 以左目特征点为中心 裁剪出一个边长为2w的正方形
-                cv::Mat IL = mpORBextractorLeft->mvImagePyramid[kpL.octave].rowRange(scaledvL-w,scaledvL+w+1).colRange(scaleduL-w,scaleduL+w+1);
-                std::cout << " IL.size() " << IL.size() << std::endl;
-                std::cout << " IL.type() " << IL.type() << std::endl;
-                cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/IL.png", IL);
-                for(int i = 0; i < IL.rows; ++i)
-                {
-                    for(int j = 0; j < IL.cols; ++j)
-                    {
-                        // 获取 (i,j) 位置的像素值
-                        float value = IL.at<float>(i, j);
-
-                        // 打印像素值
-                        std::cout << value << " ";
+                        vDists[L + incR] = dist;
                     }
 
-                    // 换行打印，以保持矩阵的形状
-                    std::cout << std::endl;
-                }
+                    if (bestincR == -L || bestincR == L)
+                        continue;
 
-                IL.convertTo(IL,CV_32F);
-                IL = IL - IL.at<float>(w,w) *cv::Mat::ones(IL.rows,IL.cols,CV_32F);
-                cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/_IL.png", IL);
-                for(int i = 0; i < IL.rows; ++i)
-                {
-                    for(int j = 0; j < IL.cols; ++j)
-                    {
-                        // 获取 (i,j) 位置的像素值
-                        float value = IL.at<float>(i, j);
+                    // Sub-pixel match (Parabola fitting)
+                    const float dist1 = vDists[L + bestincR - 1];
+                    const float dist2 = vDists[L + bestincR];
+                    const float dist3 = vDists[L + bestincR + 1];
 
-                        // 打印像素值
-                        std::cout << value << " ";
+                    const float deltaR = (dist1 - dist3) / (2.0f * (dist1 + dist3 - 2.0f * dist2));
+
+                    if (deltaR < -1 || deltaR > 1)
+                        continue;
+
+                    // Re-scaled coordinate
+                    float bestuR = mvScaleFactors[kpL.octave] * ((float) scaleduR0 + (float) bestincR + deltaR);
+
+                    float disparity = (uL - bestuR);
+
+                    if (disparity >= minD && disparity < maxD) {
+                        if (disparity <= 0) {
+                            disparity = 0.01;
+                            bestuR = uL - 0.01;
+                        }
+                        mvDepth[iL] = mbf / disparity;
+                        mvuRight[iL] = bestuR;
+                        vDistIdx.push_back(pair < int, int > (bestDist, iL));
                     }
-
-                    // 换行打印，以保持矩阵的形状
-                    std::cout << std::endl;
-                }
-
-
-                int bestDist = INT_MAX;
-                std::cout << "bestDist " << bestDist << std::endl;
-                int bestincR = 0;
-                const int L = 5;
-                vector<float> vDists;
-                vDists.resize(2*L+1);
-
-                // 右目的横坐标
-                std::cout << "scaleduR0 " << scaleduR0 << std::endl;
-                const float iniu = scaleduR0+L-w;
-                std::cout << "iniu " << iniu << std::endl;
-                const float endu = scaleduR0+L+w+1;
-                std::cout << "endu " << endu << std::endl;
-
-                if(iniu<0 || endu >= mpORBextractorRight->mvImagePyramid[kpL.octave].cols)
-                    continue;
-
-                for(int incR=-L; incR<=+L; incR++)
-                {
-                    cv::Mat IR = mpORBextractorRight->mvImagePyramid[kpL.octave].rowRange(scaledvL-w,scaledvL+w+1).colRange(scaleduR0+incR-w,scaleduR0+incR+w+1);
-                    IR.convertTo(IR,CV_32F);
-                    IR = IR - IR.at<float>(w,w) *cv::Mat::ones(IR.rows,IR.cols,CV_32F);
-
-                    float dist = cv::norm(IL,IR,cv::NORM_L1);
-                    if(dist<bestDist)
-                    {
-                        bestDist =  dist;
-                        bestincR = incR;
-                    }
-
-                    vDists[L+incR] = dist;
-                }
-
-                if(bestincR==-L || bestincR==L)
-                    continue;
-
-                // Sub-pixel match (Parabola fitting)
-                const float dist1 = vDists[L+bestincR-1];
-                std::cout << "dist1 " << dist1 << std::endl;
-                const float dist2 = vDists[L+bestincR];
-                std::cout << "dist2 " << dist2 << std::endl;
-                const float dist3 = vDists[L+bestincR+1];
-                std::cout << "dist3 " << dist3 << std::endl;
-
-                const float deltaR = (dist1-dist3)/(2.0f*(dist1+dist3-2.0f*dist2));
-                std::cout << "deltaR " << deltaR << std::endl;
-
-                if(deltaR<-1 || deltaR>1)
-                    continue;
-
-                // Re-scaled coordinate
-                float bestuR = mvScaleFactors[kpL.octave]*((float)scaleduR0+(float)bestincR+deltaR);
-
-                float disparity = (uL-bestuR);
-
-                if(disparity>=minD && disparity<maxD)
-                {
-                    if(disparity<=0)
-                    {
-                        disparity=0.01;
-                        bestuR = uL-0.01;
-                    }
-                    mvDepth[iL]=mbf/disparity;
-                    mvuRight[iL] = bestuR;
-                    vDistIdx.push_back(pair<int,int>(bestDist,iL));
                 }
             }
-        }
 
-        sort(vDistIdx.begin(),vDistIdx.end());
-        const float median = vDistIdx[vDistIdx.size()/2].first;
-        const float thDist = 1.5f*1.4f*median;
+            sort(vDistIdx.begin(), vDistIdx.end());
+            const float median = vDistIdx[vDistIdx.size() / 2].first;
+            const float thDist = 1.5f * 1.4f * median;
 
-        for(int i=vDistIdx.size()-1;i>=0;i--)
-        {
-            if(vDistIdx[i].first<thDist)
-                break;
-            else
-            {
-                mvuRight[vDistIdx[i].second]=-1;
-                mvDepth[vDistIdx[i].second]=-1;
+            for (int i = vDistIdx.size() - 1; i >= 0; i--) {
+                if (vDistIdx[i].first < thDist)
+                    break;
+                else {
+                    mvuRight[vDistIdx[i].second] = -1;
+                    mvDepth[vDistIdx[i].second] = -1;
+                }
             }
         }
     }
