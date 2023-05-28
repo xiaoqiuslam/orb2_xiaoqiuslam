@@ -24,7 +24,8 @@
 #include <thread>
 
 //#define DRAW_KEY_POINT
-#define BEST_DIST
+//#define BEST_DIST
+#define SAD
 
 namespace ORB_SLAM2
 {
@@ -746,43 +747,63 @@ namespace ORB_SLAM2
                 cv::Mat IL = mpORBextractorLeft->mvImagePyramid[kpL.octave].rowRange(scaledvL-w,scaledvL+w+1).colRange(scaleduL-w,scaleduL+w+1);
                 std::cout << " IL.size() " << IL.size() << std::endl;
                 std::cout << " IL.type() " << IL.type() << std::endl;
-                cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/IL.png", IL);
-                for(int i = 0; i < IL.rows; ++i)
-                {
-                    for(int j = 0; j < IL.cols; ++j)
-                    {
+
+#ifdef SAD
+
+                const int height = max(m_image_Left_BGR.rows, m_image_Right_BGR.rows);
+                const int width = m_image_Left_BGR.cols + m_image_Right_BGR.cols;
+                cv::Mat output(height, width, CV_8UC3, cv::Scalar(0, 0, 0));
+                m_image_Left_BGR.copyTo(output(cv::Rect(0, 0, m_image_Left_BGR.cols, m_image_Left_BGR.rows)));
+                m_image_Right_BGR.copyTo(output(cv::Rect(m_image_Left_BGR.cols, 0, m_image_Right_BGR.cols, m_image_Right_BGR.rows)));
+
+
+                circle(output, kpL.pt, 1, cv::Scalar(0, 0, 255), 2);
+                cv::putText(output, cv::format("key point col x row y(%d, %d)", int(kpL.pt.x), int(kpL.pt.y)),
+                            cv::Point(kpL.pt.x - 100, kpL.pt.y - 20), cv::FONT_HERSHEY_SIMPLEX, 0.4,
+                            cv::Scalar(0, 0, 255), 1);
+
+                // w 创建表示区域的矩形框
+                cv::Rect region(scaleduL - w, scaledvL - w, 2 * w + 1, 2 * w + 1);
+                // 在左图像上绘制矩形框
+                cv::rectangle(output, region, cv::Scalar(0, 255, 0), 1);
+
+                cv::Point topLeft(region.x-180, region.y-5);
+                cv::putText(output, cv::format("rectangle top left(%d, %d)", region.x, region.y),
+                            topLeft, cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 0), 1);
+
+                cv::Point bottomRight(region.x + region.width - 1 + 5, region.y + region.height - 1 + 5);
+                cv::putText(output, cv::format("rectangle bottom right(%d, %d)", region.x + region.width, region.y + region.height),
+                            bottomRight, cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 0), 1);
+
+                cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/left_rectangle_row_" + to_string(int(region.x)) + "_col_" + to_string(int(region.y)) + ".png", output);
+
+                for(int i = 0; i < IL.rows; ++i){
+                    for(int j = 0; j < IL.cols; ++j){
                         // 获取 (i,j) 位置的像素值
-                        float value = IL.at<float>(i, j);
-
+                        uchar value = IL.at<uchar>(i, j);
                         // 打印像素值
-                        std::cout << value << " ";
+                        std::cout << static_cast<int>(value) << " ";
                     }
-
                     // 换行打印，以保持矩阵的形状
                     std::cout << std::endl;
                 }
+
+#endif
 
                 IL.convertTo(IL,CV_32F);
                 IL = IL - IL.at<float>(w,w) *cv::Mat::ones(IL.rows,IL.cols,CV_32F);
-                cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/_IL.png", IL);
-                for(int i = 0; i < IL.rows; ++i)
-                {
-                    for(int j = 0; j < IL.cols; ++j)
-                    {
+                for(int i = 0; i < IL.rows; ++i){
+                    for(int j = 0; j < IL.cols; ++j){
                         // 获取 (i,j) 位置的像素值
-                        float value = IL.at<float>(i, j);
-
+                        uchar value = IL.at<uchar>(i, j);
                         // 打印像素值
-                        std::cout << value << " ";
+                        std::cout << static_cast<int>(value) << " ";
                     }
-
                     // 换行打印，以保持矩阵的形状
                     std::cout << std::endl;
                 }
 
-
                 int bestDist = INT_MAX;
-                std::cout << "bestDist " << bestDist << std::endl;
                 int bestincR = 0;
                 const int L = 5;
                 vector<float> vDists;
@@ -795,35 +816,75 @@ namespace ORB_SLAM2
                 const float endu = scaleduR0+L+w+1;
                 std::cout << "endu " << endu << std::endl;
 
+                // 保证右目图像块的范围在图像内
                 if(iniu<0 || endu >= mpORBextractorRight->mvImagePyramid[kpL.octave].cols)
                     continue;
 
                 for(int incR=-L; incR<=+L; incR++)
                 {
-                    cv::Mat IR = mpORBextractorRight->mvImagePyramid[kpL.octave].rowRange(scaledvL-w,scaledvL+w+1).colRange(scaleduR0+incR-w,scaleduR0+incR+w+1);
+                    cv::Mat IR = mpORBextractorRight->mvImagePyramid[kpL.octave]
+                            .rowRange(scaledvL-w,scaledvL+w+1)
+                            .colRange(scaleduR0+incR-w,scaleduR0+incR+w+1);
+
+#ifdef SAD
+
+                    circle(output, cv::Point( m_image_Left_BGR.cols + mvKeysRight[bestIdxR].pt.x, mvKeysRight[bestIdxR].pt.y), 1, cv::Scalar(0, 0, 255), 2);
+                    cv::putText(output, cv::format("key point col x row y(%d, %d)", int(mvKeysRight[bestIdxR].pt.x), int(mvKeysRight[bestIdxR].pt.y)),
+                                cv::Point(m_image_Left_BGR.cols + mvKeysRight[bestIdxR].pt.x - 100, mvKeysRight[bestIdxR].pt.y - 20), cv::FONT_HERSHEY_SIMPLEX, 0.4,
+                                cv::Scalar(0, 0, 255), 1);
+
+                    cv::Rect region(m_image_Left_BGR.cols + scaleduR0 + incR - w, scaledvL - w, 2 * w + 1, 2 * w + 1);
+                    cv::rectangle(output, region, cv::Scalar(0, 255, 0), 1);
+
+//                    cv::putText(output, cv::format("rectangle top left(%d, %d)", int(scaleduR0+incR-w), int(scaledvL - w)),
+//                                cv::Point (region.x - 150, region.y - 5),
+//                                cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 0), 1);
+//
+//                    cv::putText(output, cv::format("rectangle bottom right(%d, %d)", int(scaleduR0+incR+w+1), int(scaledvL+w+1)),
+//                                cv::Point(region.x + region.width +5 , region.y + region.height + 5),
+//                                cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 0), 1);
+
+                    cv::imwrite("/home/q/orb2_xiaoqiuslam/tmp/right_rectangle_row_" + to_string(int(scaleduR0 + incR - w)) + "_col_" + to_string(int(scaledvL - w)) + ".png", output);
+
+
+
+
+#endif
+
                     IR.convertTo(IR,CV_32F);
                     IR = IR - IR.at<float>(w,w) *cv::Mat::ones(IR.rows,IR.cols,CV_32F);
 
+                    // 实际就是计算两个像素差
                     float dist = cv::norm(IL,IR,cv::NORM_L1);
+
                     if(dist<bestDist)
                     {
+                        std::cout << "dist < bestDist bestDist " << bestDist << " dist " << dist << std::endl;
                         bestDist =  dist;
+                        // 这个变量记录的是第几个矩形块 相对的起点是 左目特征点的x坐标
                         bestincR = incR;
                     }
+                    else
+                    {
+                        std::cout << " dist > bestDist bestDist " << bestDist << " dist " << dist << std::endl;
+                    }
 
+                    // 记录每个矩形的dist值
                     vDists[L+incR] = dist;
                 }
 
-                if(bestincR==-L || bestincR==L)
+                if(bestincR==-L || bestincR==L){
+                    std::cout << " if(bestincR==-L || bestincR==L) " << std::endl;
                     continue;
+                }
 
                 // Sub-pixel match (Parabola fitting)
                 const float dist1 = vDists[L+bestincR-1];
-                std::cout << "dist1 " << dist1 << std::endl;
+                std::cout << "dist1 " << dist1 << " L+bestincR-1 " << L+bestincR-1 << std::endl;
                 const float dist2 = vDists[L+bestincR];
-                std::cout << "dist2 " << dist2 << std::endl;
+                std::cout << "dist2 " << dist2 << " L+bestincR " << L+bestincR << std::endl;
                 const float dist3 = vDists[L+bestincR+1];
-                std::cout << "dist3 " << dist3 << std::endl;
+                std::cout << "dist3 " << dist3 << " L+bestincR+1 " << L+bestincR+1 << std::endl;
 
                 const float deltaR = (dist1-dist3)/(2.0f*(dist1+dist3-2.0f*dist2));
                 std::cout << "deltaR " << deltaR << std::endl;
@@ -832,9 +893,12 @@ namespace ORB_SLAM2
                     continue;
 
                 // Re-scaled coordinate
+                // 其实就是根据距离值 计算一个deltaR 目的就是修正 bestincR
                 float bestuR = mvScaleFactors[kpL.octave]*((float)scaleduR0+(float)bestincR+deltaR);
 
+                // 匹配的特征点 x 坐标的差 就是视差
                 float disparity = (uL-bestuR);
+                std::cout << " disparity " << disparity << std::endl;
 
                 if(disparity>=minD && disparity<maxD)
                 {
@@ -843,7 +907,11 @@ namespace ORB_SLAM2
                         disparity=0.01;
                         bestuR = uL-0.01;
                     }
+                    // mvDepth存储特征点的深度信息
+                    std::cout << " mbf/disparity " << mbf/disparity << std::endl;
                     mvDepth[iL]=mbf/disparity;
+                    // mvuRight存储右图匹配点索引
+                    std::cout << " bestuR " << bestuR << std::endl;
                     mvuRight[iL] = bestuR;
                     vDistIdx.push_back(pair<int,int>(bestDist,iL));
                 }
